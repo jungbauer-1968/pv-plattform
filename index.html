@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PV Plattform – Projekte & Wochenberichte</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111b2e; --muted:#9fb1d1; --txt:#eaf0ff; --accent:#7cc4ff; --ok:#39d98a; --warn:#ffcc66; --bad:#ff6b6b; }
+    *{ box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body{ margin:0; background:linear-gradient(180deg,#081022, #0b1220 35%); color:var(--txt); }
+    header{ padding:18px 16px; position:sticky; top:0; background:rgba(11,18,32,.85); backdrop-filter: blur(10px); border-bottom:1px solid rgba(255,255,255,.08); z-index:5;}
+    header .row{ display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+    h1{ font-size:16px; margin:0; letter-spacing:.3px; }
+    .pill{ padding:6px 10px; border:1px solid rgba(255,255,255,.14); border-radius:999px; color:var(--muted); font-size:12px; }
+    main{ padding:16px; max-width:1200px; margin:0 auto; }
+    .grid{ display:grid; gap:14px; grid-template-columns: 360px 1fr; }
+    @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
+    .card{ background:rgba(17,27,46,.92); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:14px; box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+    .card h2{ margin:0 0 10px; font-size:14px; color:#dbe7ff; }
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input, textarea, select, button{
+      width:100%; padding:10px 10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.14); background:#0c1528; color:var(--txt);
+      outline:none;
+    }
+    textarea{ min-height:90px; resize:vertical; }
+    button{ background:linear-gradient(90deg, rgba(124,196,255,.25), rgba(124,196,255,.12)); border:1px solid rgba(124,196,255,.35); cursor:pointer; }
+    button:hover{ filter:brightness(1.05); }
+    .btnRow{ display:flex; gap:10px; margin-top:10px; }
+    .btnRow > *{ flex:1; }
+    .split{ display:grid; gap:10px; grid-template-columns:1fr 1fr; }
+    .tag{ display:inline-flex; gap:6px; align-items:center; font-size:12px; color:var(--muted); border:1px solid rgba(255,255,255,.12); padding:6px 10px; border-radius:999px; margin:6px 6px 0 0; }
+    .tag b{ color:var(--txt); font-weight:600; }
+    .list{ display:flex; flex-direction:column; gap:10px; }
+    .proj{ border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(12,21,40,.65); cursor:pointer; }
+    .proj:hover{ border-color:rgba(124,196,255,.35); }
+    .proj .top{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .proj .name{ font-weight:700; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .statusDots{ display:flex; gap:6px; }
+    .dot{ width:10px; height:10px; border-radius:999px; background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.12); }
+    .dot.ok{ background:rgba(57,217,138,.85); border-color:rgba(57,217,138,.9); }
+    .dot.warn{ background:rgba(255,204,102,.9); border-color:rgba(255,204,102,.9); }
+    .dot.bad{ background:rgba(255,107,107,.85); border-color:rgba(255,107,107,.9); }
+    .hr{ height:1px; background:rgba(255,255,255,.10); margin:12px 0; }
+    .rightHead{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .rightHead .title{ font-size:15px; font-weight:800; }
+    .actions{ display:flex; gap:10px; }
+    .actions button{ width:auto; padding:10px 12px; }
+    .chips{ display:flex; flex-wrap:wrap; }
+    .small{ font-size:12px; }
+    .ok{ color:var(--ok); }
+    .warn{ color:var(--warn); }
+    .bad{ color:var(--bad); }
+    canvas{ width:100%; height:180px; background:#081022; border:1px dashed rgba(255,255,255,.18); border-radius:12px; touch-action:none; }
+    .fileItem{ display:flex; justify-content:space-between; gap:10px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.10); border-radius:12px; background:rgba(12,21,40,.55); }
+    a{ color:var(--accent); text-decoration:none; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>PV Plattform – Projekte, Material, Status, Uploads, Wochenberichte</h1>
+    <div class="pill" id="connPill">Nicht verbunden</div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- Left: Login + Project list -->
+    <div class="card">
+      <h2>Login (einfach)</h2>
+      <div class="split">
+        <div>
+          <label>Rolle</label>
+          <select id="role">
+            <option value="worker">PV Gruppe</option>
+            <option value="boss">Chef</option>
+          </select>
+        </div>
+        <div>
+          <label>Name</label>
+          <input id="person" placeholder="z.B. Ali / Sido / Robert" />
+        </div>
+      </div>
+      <label>PIN (für Chef)</label>
+      <input id="pin" placeholder="nur Chef-PIN" type="password" />
+      <div class="btnRow">
+        <button id="btnLogin">Einloggen</button>
+        <button id="btnRefresh">Aktualisieren</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="rightHead">
+        <div>
+          <div class="title">Projekte</div>
+          <div class="muted">Klick ein Projekt → rechts Details</div>
+        </div>
+        <div class="actions">
+          <button id="btnNewProject" title="Nur Chef">+ Projekt</button>
+        </div>
+      </div>
+
+      <div class="list" id="projectList"></div>
+    </div>
+
+    <!-- Right: Project detail -->
+    <div class="card">
+      <div class="rightHead">
+        <div>
+          <div class="title" id="selTitle">Kein Projekt ausgewählt</div>
+          <div class="muted" id="selSub"></div>
+        </div>
+        <div class="actions">
+          <button id="btnSaveProject">Speichern</button>
+          <button id="btnDeleteLocal" title="nur lokal ausblenden">Reset Ansicht</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div id="detailEmpty" class="muted">Wähle links ein Projekt aus.</div>
+
+      <div id="detailWrap" style="display:none;">
+        <div class="split">
+          <div>
+            <label>Projektname</label>
+            <input id="p_name" />
+          </div>
+          <div>
+            <label>Ort / Adresse</label>
+            <input id="p_location" />
+          </div>
+        </div>
+
+        <div class="split">
+          <div>
+            <label>Termin (Datum + Uhrzeit)</label>
+            <input id="p_appointment" type="datetime-local" />
+          </div>
+          <div>
+            <label>Team (Namen, komma-getrennt)</label>
+            <input id="p_team" placeholder="z.B. Ali, Sido, Haindl" />
+          </div>
+        </div>
+
+        <label>Material benötigt (Liste / Text)</label>
+        <textarea id="p_materials" placeholder="z.B. 30m 5x6, 1x WR, 20x Klemmen, ..."></textarea>
+
+        <div class="chips">
+          <label class="tag"><input type="checkbox" id="p_anlageFertig" /> <b>Anlage fertig</b></label>
+          <label class="tag"><input type="checkbox" id="p_fertigmeldung" /> <b>Fertigmeldung gemacht</b></label>
+          <label class="tag"><input type="checkbox" id="p_anmeldung" /> <b>Anmeldung gemacht</b></label>
+        </div>
+
+        <label>Notizen</label>
+        <textarea id="p_notes" placeholder="Besonderheiten, Probleme, Zugang, Schlüssel, ..."></textarea>
+
+        <div class="hr"></div>
+
+        <h2>Wer war dort? (Einsatz-Log)</h2>
+        <div class="split">
+          <div>
+            <label>Datum/Uhrzeit</label>
+            <input id="log_when" type="datetime-local" />
+          </div>
+          <div>
+            <label>Wer</label>
+            <input id="log_who" placeholder="Name" />
+          </div>
+        </div>
+        <label>Was wurde gemacht?</label>
+        <textarea id="log_what" placeholder="Kurzbericht vom Einsatz..."></textarea>
+        <div class="btnRow">
+          <button id="btnAddLog">Log hinzufügen</button>
+          <button id="btnReloadLogs">Logs laden</button>
+        </div>
+        <div class="list" id="logList"></div>
+
+        <div class="hr"></div>
+
+        <h2>Angebots-Upload / Dokumente</h2>
+        <label>Datei auswählen (PDF/JPG/PNG)</label>
+        <input id="fileInput" type="file" accept=".pdf,image/*" />
+        <div class="btnRow">
+          <button id="btnUpload">Upload</button>
+          <button id="btnReloadFiles">Dateien laden</button>
+        </div>
+        <div class="list" id="fileList"></div>
+
+        <div class="hr"></div>
+
+        <h2>Wochenbericht (07:00–16:15) + Unterschrift</h2>
+        <div class="split">
+          <div>
+            <label>KW (z.B. 6)</label>
+            <input id="r_week" />
+          </div>
+          <div>
+            <label>Person</label>
+            <input id="r_person" />
+          </div>
+        </div>
+
+        <div class="split">
+          <div>
+            <label>Von (Datum)</label>
+            <input id="r_dateFrom" type="date" />
+          </div>
+          <div>
+            <label>Bis (Datum)</label>
+            <input id="r_dateTo" type="date" />
+          </div>
+        </div>
+
+        <div class="split">
+          <div>
+            <label>Von (Uhrzeit)</label>
+            <input id="r_fromTime" type="time" value="07:00" />
+          </div>
+          <div>
+            <label>Bis (Uhrzeit)</label>
+            <input id="r_toTime" type="time" value="16:15" />
+          </div>
+        </div>
+
+        <label>Arbeitsbeschreibung / Wochenbericht</label>
+        <textarea id="r_work" placeholder="Was wurde diese Woche gemacht? Material/Probleme/Abnahmen/…"></textarea>
+
+        <label>Unterschrift (mit Finger/Stift)</label>
+        <canvas id="sig"></canvas>
+        <div class="btnRow">
+          <button id="btnClearSig">Unterschrift löschen</button>
+          <button id="btnSubmitReport">Wochenbericht senden</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <h2>Chef: Alle Wochenberichte</h2>
+        <div class="btnRow">
+          <button id="btnLoadReports">Berichte laden</button>
+          <button id="btnExportJSON">Export (Backup JSON)</button>
+        </div>
+        <div class="list" id="reportList"></div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // === KONFIG ===
+  const API_URL = "PASTE_YOUR_GAS_WEBAPP_URL_HERE";
+  const API_TOKEN = "CHANGE_ME_TO_A_LONG_RANDOM_TOKEN"; // muss exakt wie im Code.gs sein
+  const CHEF_PIN = "1234"; // optional: nur frontend (echte Sicherheit wäre anders)
+
+  // === State ===
+  let state = {
+    role: "worker",
+    person: "",
+    loggedIn: false,
+    projects: [],
+    selectedProjectId: null,
+    logs: [],
+    files: [],
+    reports: []
+  };
+
+  // === Helpers ===
+  const $ = (id) => document.getElementById(id);
+
+  function setConn(ok, text){
+    const pill = $("connPill");
+    pill.textContent = text || (ok ? "Verbunden" : "Nicht verbunden");
+    pill.style.borderColor = ok ? "rgba(57,217,138,.6)" : "rgba(255,107,107,.6)";
+    pill.style.color = ok ? "var(--ok)" : "var(--bad)";
+  }
+
+  async function api(action, payload){
+    const url = new URL(API_URL);
+    url.searchParams.set("action", action);
+    url.searchParams.set("token", API_TOKEN);
+
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ token: API_TOKEN, ...(payload||{}) })
+    });
+    const data = await res.json().catch(()=>null);
+    if (!data) throw new Error("Keine JSON Antwort");
+    if (!data.ok) throw new Error(data.error || "API Fehler");
+    return data;
+  }
+
+  function fmtDTLocal(s){
+    if(!s) return "";
+    // allow both ISO or already local
+    try {
+      if (s.includes("T")) return s.slice(0,16);
+      return s;
+    } catch { return s; }
+  }
+
+  function projectStatusDots(p){
+    // 3 statuspunkte: Anlage fertig, Fertigmeldung, Anmeldung
+    const a = p.anlageFertig ? "ok" : "bad";
+    const f = p.fertigmeldung ? "ok" : "warn";
+    const n = p.anmeldung ? "ok" : "warn";
+    return `<div class="statusDots">
+      <div class="dot ${a}" title="Anlage fertig"></div>
+      <div class="dot ${f}" title="Fertigmeldung"></div>
+      <div class="dot ${n}" title="Anmeldung"></div>
+    </div>`;
+  }
+
+  function renderProjectList(){
+    const wrap = $("projectList");
+    wrap.innerHTML = "";
+    if (!state.projects.length){
+      wrap.innerHTML = `<div class="muted">Noch keine Projekte.</div>`;
+      return;
+    }
+    state.projects
+      .sort((a,b)=> String(a.appointment||"").localeCompare(String(b.appointment||"")))
+      .forEach(p=>{
+        const div = document.createElement("div");
+        div.className = "proj";
+        div.onclick = ()=> selectProject(p.id);
+        div.innerHTML = `
+          <div class="top">
+            <div>
+              <div class="name">${escapeHtml(p.name || "(ohne Name)")}</div>
+              <div class="muted">${escapeHtml(p.location||"")}</div>
+              <div class="muted small">Termin: <span class="${p.appointment ? "ok":"warn"}">${escapeHtml(p.appointment || "—")}</span></div>
+            </div>
+            ${projectStatusDots(p)}
+          </div>
+        `;
+        wrap.appendChild(div);
+      });
+  }
+
+  function escapeHtml(s){
+    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function setDetailVisible(on){
+    $("detailEmpty").style.display = on ? "none" : "block";
+    $("detailWrap").style.display = on ? "block" : "none";
+  }
+
+  function getSelectedProject(){
+    return state.projects.find(p => p.id === state.selectedProjectId) || null;
+  }
+
+  function fillProjectForm(p){
+    $("p_name").value = p.name || "";
+    $("p_location").value = p.location || "";
+    $("p_appointment").value = fmtDTLocal(p.appointment || "");
+    $("p_team").value = p.team || "";
+    $("p_materials").value = p.materials || "";
+    $("p_anlageFertig").checked = !!p.anlageFertig;
+    $("p_fertigmeldung").checked = !!p.fertigmeldung;
+    $("p_anmeldung").checked = !!p.anmeldung;
+    $("p_notes").value = p.notes || "";
+    $("selTitle").textContent = p.name || "Projekt";
+    $("selSub").textContent = `${p.location || ""}`.trim();
+    $("r_person").value = state.person || "";
+  }
+
+  async function selectProject(id){
+    state.selectedProjectId = id;
+    const p = getSelectedProject();
+    if(!p){ setDetailVisible(false); return; }
+    setDetailVisible(true);
+    fillProjectForm(p);
+    $("log_when").value = "";
+    $("log_who").value = state.person || "";
+    $("log_what").value = "";
+    await reloadLogs();
+    await reloadFiles();
+  }
+
+  function currentProjectPayload(){
+    return {
+      id: state.selectedProjectId,
+      name: $("p_name").value.trim(),
+      location: $("p_location").value.trim(),
+      appointment: $("p_appointment").value ? $("p_appointment").value : "",
+      team: $("p_team").value.trim(),
+      materials: $("p_materials").value.trim(),
+      anlageFertig: $("p_anlageFertig").checked,
+      fertigmeldung: $("p_fertigmeldung").checked,
+      anmeldung: $("p_anmeldung").checked,
+      notes: $("p_notes").value.trim(),
+    };
+  }
+
+  async function reloadProjects(){
+    const data = await api("listProjects");
+    state.projects = data.projects || [];
+    renderProjectList();
+    if(state.selectedProjectId){
+      const still = getSelectedProject();
+      if(still){ fillProjectForm(still); }
+    }
+  }
+
+  async function saveProject(){
+    if(state.role !== "boss"){
+      alert("Nur Chef darf Projekte speichern/anlegen.");
+      return;
+    }
+    const proj = currentProjectPayload();
+    if(!proj.name) { alert("Bitte Projektname eingeben."); return; }
+    const data = await api("saveProject", { project: proj });
+    await reloadProjects();
+    // reselect
+    state.selectedProjectId = data.project.id;
+    await selectProject(state.selectedProjectId);
+  }
+
+  async function newProject(){
+    if(state.role !== "boss"){
+      alert("Nur Chef darf Projekte anlegen.");
+      return;
+    }
+    // Minimal neues Projekt lokal auswählen, speichern macht der Chef dann
+    const tmpId = "tmp-" + Math.random().toString(16).slice(2);
+    const p = { id: tmpId, name:"Neues Projekt", location:"", appointment:"", team:"", materials:"", anlageFertig:false, fertigmeldung:false, anmeldung:false, notes:"" };
+    state.projects.unshift(p);
+    renderProjectList();
+    await selectProject(tmpId);
+  }
+
+  async function addLog(){
+    const p = getSelectedProject();
+    if(!p) return;
+    const when = $("log_when").value ? $("log_when").value : new Date().toISOString();
+    const who = $("log_who").value.trim() || state.person || "";
+    const what = $("log_what").value.trim();
+    if(!who || !what){ alert("Bitte 'Wer' und 'Was' ausfüllen."); return; }
+    await api("addLog", { log: { projectId: p.id, when, who, what } });
+    $("log_what").value = "";
+    await reloadLogs();
+  }
+
+  async function reloadLogs(){
+    const p = getSelectedProject();
+    if(!p) return;
+    const data = await api("listLogs", { projectId: p.id });
+    state.logs = data.logs || [];
+    const wrap = $("logList");
+    wrap.innerHTML = "";
+    if(!state.logs.length){
+      wrap.innerHTML = `<div class="muted">Noch keine Logs.</div>`;
+      return;
+    }
+    state.logs.forEach(l=>{
+      const div = document.createElement("div");
+      div.className = "proj";
+      div.innerHTML = `
+        <div class="name">${escapeHtml(l.who)} <span class="muted">(${escapeHtml(l.when)})</span></div>
+        <div class="muted">${escapeHtml(l.what)}</div>
+      `;
+      wrap.appendChild(div);
+    });
+  }
+
+  async function uploadFile(){
+    const p = getSelectedProject();
+    if(!p) return;
+    const inp = $("fileInput");
+    if(!inp.files || !inp.files[0]) { alert("Bitte Datei auswählen."); return; }
+    const f = inp.files[0];
+
+    // WARNUNG: DataURL ist für kleine Dateien ok. Für große PDFs besser Google Drive Upload.
+    const dataUrl = await fileToDataUrl(f);
+    await api("uploadFileMeta", { file: { projectId: p.id, name: f.name, mime: f.type, size: f.size, dataUrl } });
+    inp.value = "";
+    await reloadFiles();
+  }
+
+  function fileToDataUrl(file){
+    return new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = ()=> resolve(r.result);
+      r.onerror = ()=> reject(new Error("FileReader Fehler"));
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function reloadFiles(){
+    const p = getSelectedProject();
+    if(!p) return;
+    const data = await api("listFiles", { projectId: p.id });
+    state.files = data.files || [];
+    const wrap = $("fileList");
+    wrap.innerHTML = "";
+    if(!state.files.length){
+      wrap.innerHTML = `<div class="muted">Noch keine Dateien.</div>`;
+      return;
+    }
+    state.files.forEach(file=>{
+      const div = document.createElement("div");
+      div.className = "fileItem";
+      const sizeKb = Math.round((file.size||0)/1024);
+      div.innerHTML = `
+        <div>
+          <div class="name">${escapeHtml(file.name)}</div>
+          <div class="muted small">${escapeHtml(file.mime)} · ${sizeKb} KB · ${escapeHtml(file.createdAt||"")}</div>
+        </div>
+        <div><a href="${file.dataUrl}" download="${escapeHtml(file.name)}">Download</a></div>
+      `;
+      wrap.appendChild(div);
+    });
+  }
+
+  async function submitReport(){
+    const p = getSelectedProject();
+    if(!p) return;
+
+    const rep = {
+      week: $("r_week").value.trim(),
+      dateFrom: $("r_dateFrom").value,
+      dateTo: $("r_dateTo").value,
+      person: ($("r_person").value.trim() || state.person || ""),
+      projectId: p.id,
+      fromTime: $("r_fromTime").value || "07:00",
+      toTime: $("r_toTime").value || "16:15",
+      workDescription: $("r_work").value.trim(),
+      signatureDataUrl: sigToDataUrl()
+    };
+
+    if(!rep.person || !rep.week || !rep.dateFrom || !rep.dateTo){
+      alert("Bitte KW, Person, Von/Bis Datum ausfüllen.");
+      return;
+    }
+    if(!rep.workDescription){
+      alert("Bitte Arbeitsbeschreibung ausfüllen.");
+      return;
+    }
+    if(!rep.signatureDataUrl){
+      alert("Bitte unterschreiben (oder Unterschrift ist leer).");
+      return;
+    }
+
+    await api("submitReport", { report: rep });
+    $("r_work").value = "";
+    clearSig();
+    alert("Wochenbericht gesendet ✅");
+  }
+
+  async function loadReports(){
+    if(state.role !== "boss"){
+      alert("Nur Chef sieht alle Berichte.");
+      return;
+    }
+    const data = await api("listReports");
+    state.reports = data.reports || [];
+    const wrap = $("reportList");
+    wrap.innerHTML = "";
+    if(!state.reports.length){
+      wrap.innerHTML = `<div class="muted">Noch keine Berichte.</div>`;
+      return;
+    }
+    state.reports.forEach(r=>{
+      const div = document.createElement("div");
+      div.className = "proj";
+      div.innerHTML = `
+        <div class="top">
+          <div>
+            <div class="name">KW ${escapeHtml(r.week)} – ${escapeHtml(r.person)}</div>
+            <div class="muted">Projekt: ${escapeHtml(r.projectId)} · ${escapeHtml(r.dateFrom)} bis ${escapeHtml(r.dateTo)} · ${escapeHtml(r.fromTime)}–${escapeHtml(r.toTime)}</div>
+          </div>
+          <div class="muted small">${escapeHtml(r.createdAt||"")}</div>
+        </div>
+        <div class="hr"></div>
+        <div class="muted">${escapeHtml(r.workDescription)}</div>
+        <div class="hr"></div>
+        <div class="small"><a href="${r.signatureDataUrl}" download="Unterschrift_${escapeHtml(r.person)}_KW${escapeHtml(r.week)}.png">Unterschrift downloaden</a></div>
+      `;
+      wrap.appendChild(div);
+    });
+  }
+
+  function exportJSON(){
+    const dump = { exportedAt: new Date().toISOString(), projects: state.projects, selectedProjectId: state.selectedProjectId };
+    const blob = new Blob([JSON.stringify(dump, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "pv_plattform_backup.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // === Signature pad (simple) ===
+  const canvas = $("sig");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let hasInk = false;
+
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.round(rect.width * devicePixelRatio);
+    canvas.height = Math.round(rect.height * devicePixelRatio);
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#eaf0ff";
+  }
+
+  window.addEventListener("resize", ()=> {
+    // simplistic: clear on resize
+    clearSig();
+    resizeCanvas();
+  });
+
+  function pointerPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left);
+    const y = (e.clientY - rect.top);
+    return {x,y};
+  }
+
+  canvas.addEventListener("pointerdown", (e)=>{
+    drawing = true;
+    canvas.setPointerCapture(e.pointerId);
+    const p = pointerPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  });
+  canvas.addEventListener("pointermove", (e)=>{
+    if(!drawing) return;
+    const p = pointerPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    hasInk = true;
+  });
+  canvas.addEventListener("pointerup", ()=> drawing = false);
+  canvas.addEventListener("pointercancel", ()=> drawing = false);
+
+  function clearSig(){
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0,0,rect.width,rect.height);
+    hasInk = false;
+  }
+  function sigToDataUrl(){
+    if(!hasInk) return "";
+    // export in device pixel size
+    return canvas.toDataURL("image/png");
+  }
+
+  // === Login ===
+  function login(){
+    const role = $("role").value;
+    const person = $("person").value.trim();
+    const pin = $("pin").value.trim();
+
+    if(!person){ alert("Bitte Name eingeben."); return; }
+    if(role === "boss" && pin !== CHEF_PIN){
+      alert("Chef-PIN falsch.");
+      return;
+    }
+
+    state.role = role;
+    state.person = person;
+    state.loggedIn = true;
+
+    $("btnNewProject").style.display = (role === "boss") ? "inline-block" : "none";
+    $("btnSaveProject").style.display = (role === "boss") ? "inline-block" : "inline-block"; // speichern nur Chef enforced in saveProject()
+    $("btnLoadReports").style.display = (role === "boss") ? "inline-block" : "none";
+
+    $("log_who").value = person;
+    $("r_person").value = person;
+
+    alert(`Eingeloggt als ${role === "boss" ? "Chef" : "PV Gruppe"}: ${person}`);
+  }
+
+  // === Boot ===
+  async function boot(){
+    try {
+      if(!API_URL.includes("http")) {
+        setConn(false, "API_URL fehlt");
+        return;
+      }
+      await api("ping");
+      setConn(true, "Verbunden");
+      await reloadProjects();
+    } catch (e){
+      console.error(e);
+      setConn(false, "Keine Verbindung");
+      alert("Backend nicht erreichbar. Prüfe API_URL / Token / Deploy.");
+    }
+  }
+
+  // === Wire up ===
+  $("btnLogin").onclick = login;
+  $("btnRefresh").onclick = async ()=> { await reloadProjects(); alert("Aktualisiert"); };
+  $("btnNewProject").onclick = newProject;
+  $("btnSaveProject").onclick = saveProject;
+  $("btnDeleteLocal").onclick = ()=> { state.selectedProjectId=null; setDetailVisible(false); $("selTitle").textContent="Kein Projekt ausgewählt"; $("selSub").textContent=""; };
+
+  $("btnAddLog").onclick = addLog;
+  $("btnReloadLogs").onclick = reloadLogs;
+  $("btnUpload").onclick = uploadFile;
+  $("btnReloadFiles").onclick = reloadFiles;
+
+  $("btnClearSig").onclick = clearSig;
+  $("btnSubmitReport").onclick = submitReport;
+
+  $("btnLoadReports").onclick = loadReports;
+  $("btnExportJSON").onclick = exportJSON;
+
+  // init signature
+  resizeCanvas();
+  clearSig();
+
+  boot();
+</script>
+</body>
+</html>
