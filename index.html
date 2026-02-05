@@ -67,7 +67,6 @@
 
 <main>
   <div class="grid">
-    <!-- Left: Login + Project list -->
     <div class="card">
       <h2>Login (einfach)</h2>
       <div class="split">
@@ -80,11 +79,11 @@
         </div>
         <div>
           <label>Name</label>
-          <input id="person" placeholder="z.B. Ali / Sido / Robert" />
+          <input id="person" placeholder="Name eingeben" />
         </div>
       </div>
-      <label>PIN (für Chef)</label>
-      <input id="pin" placeholder="nur Chef-PIN" type="password" />
+      <label>Chef-PIN</label>
+      <input id="pin" type="password" placeholder="Chef-PIN" />
       <div class="btnRow">
         <button id="btnLogin">Einloggen</button>
         <button id="btnRefresh">Aktualisieren</button>
@@ -105,7 +104,6 @@
       <div class="list" id="projectList"></div>
     </div>
 
-    <!-- Right: Project detail -->
     <div class="card">
       <div class="rightHead">
         <div>
@@ -114,7 +112,7 @@
         </div>
         <div class="actions">
           <button id="btnSaveProject">Speichern</button>
-          <button id="btnDeleteLocal" title="nur lokal ausblenden">Reset Ansicht</button>
+          <button id="btnDeleteLocal">Reset Ansicht</button>
         </div>
       </div>
 
@@ -140,13 +138,13 @@
             <input id="p_appointment" type="datetime-local" />
           </div>
           <div>
-            <label>Team (Namen, komma-getrennt)</label>
-            <input id="p_team" placeholder="z.B. Ali, Sido, Haindl" />
+            <label>Team</label>
+            <input id="p_team" placeholder="Namen, komma-getrennt" />
           </div>
         </div>
 
-        <label>Material benötigt (Liste / Text)</label>
-        <textarea id="p_materials" placeholder="z.B. 30m 5x6, 1x WR, 20x Klemmen, ..."></textarea>
+        <label>Material benötigt</label>
+        <textarea id="p_materials"></textarea>
 
         <div class="chips">
           <label class="tag"><input type="checkbox" id="p_anlageFertig" /> <b>Anlage fertig</b></label>
@@ -155,7 +153,7 @@
         </div>
 
         <label>Notizen</label>
-        <textarea id="p_notes" placeholder="Besonderheiten, Probleme, Zugang, Schlüssel, ..."></textarea>
+        <textarea id="p_notes"></textarea>
 
         <div class="hr"></div>
 
@@ -167,11 +165,11 @@
           </div>
           <div>
             <label>Wer</label>
-            <input id="log_who" placeholder="Name" />
+            <input id="log_who" />
           </div>
         </div>
         <label>Was wurde gemacht?</label>
-        <textarea id="log_what" placeholder="Kurzbericht vom Einsatz..."></textarea>
+        <textarea id="log_what"></textarea>
         <div class="btnRow">
           <button id="btnAddLog">Log hinzufügen</button>
           <button id="btnReloadLogs">Logs laden</button>
@@ -181,7 +179,7 @@
         <div class="hr"></div>
 
         <h2>Angebots-Upload / Dokumente</h2>
-        <label>Datei auswählen (PDF/JPG/PNG)</label>
+        <label>Datei auswählen</label>
         <input id="fileInput" type="file" accept=".pdf,image/*" />
         <div class="btnRow">
           <button id="btnUpload">Upload</button>
@@ -191,10 +189,10 @@
 
         <div class="hr"></div>
 
-        <h2>Wochenbericht (07:00–16:15) + Unterschrift</h2>
+        <h2>Wochenbericht + Unterschrift</h2>
         <div class="split">
           <div>
-            <label>KW (z.B. 6)</label>
+            <label>KW</label>
             <input id="r_week" />
           </div>
           <div>
@@ -225,10 +223,10 @@
           </div>
         </div>
 
-        <label>Arbeitsbeschreibung / Wochenbericht</label>
-        <textarea id="r_work" placeholder="Was wurde diese Woche gemacht? Material/Probleme/Abnahmen/…"></textarea>
+        <label>Arbeitsbeschreibung</label>
+        <textarea id="r_work"></textarea>
 
-        <label>Unterschrift (mit Finger/Stift)</label>
+        <label>Unterschrift</label>
         <canvas id="sig"></canvas>
         <div class="btnRow">
           <button id="btnClearSig">Unterschrift löschen</button>
@@ -250,24 +248,14 @@
 </main>
 
 <script>
-  // === KONFIG ===
-  const API_URL = "PASTE_YOUR_GAS_WEBAPP_URL_HERE";
-  const API_TOKEN = "CHANGE_ME_TO_A_LONG_RANDOM_TOKEN"; // muss exakt wie im Code.gs sein
-  const CHEF_PIN = "1234"; // optional: nur frontend (echte Sicherheit wäre anders)
+  // === FIX INTEGRIERT (DEINE LINKS) ===
+  const API_URL = "https://script.google.com/macros/s/AKfycbyJ_BCgKJw9AfKvt8maE6rE5ZSj1BBDxoYYIM8hEYW7wjhhn87hwn4wzC4nDPa2vpkp/exec";
+  const API_TOKEN = "PV_JUNGBAUER_1968_SECURE_TOKEN";
 
-  // === State ===
-  let state = {
-    role: "worker",
-    person: "",
-    loggedIn: false,
-    projects: [],
-    selectedProjectId: null,
-    logs: [],
-    files: [],
-    reports: []
-  };
+  // Chef-PIN (nur Frontend-Check). Wenn du willst, mache ich echte PIN-Prüfung im Backend.
+  const CHEF_PIN = "1968";
 
-  // === Helpers ===
+  let state = { role:"worker", person:"", loggedIn:false, projects:[], selectedProjectId:null, logs:[], files:[], reports:[] };
   const $ = (id) => document.getElementById(id);
 
   function setConn(ok, text){
@@ -281,7 +269,6 @@
     const url = new URL(API_URL);
     url.searchParams.set("action", action);
     url.searchParams.set("token", API_TOKEN);
-
     const res = await fetch(url.toString(), {
       method: "POST",
       headers: {"Content-Type":"application/json"},
@@ -293,25 +280,14 @@
     return data;
   }
 
-  function fmtDTLocal(s){
-    if(!s) return "";
-    // allow both ISO or already local
-    try {
-      if (s.includes("T")) return s.slice(0,16);
-      return s;
-    } catch { return s; }
-  }
+  const escapeHtml = (s)=> String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const fmtDTLocal = (s)=> { if(!s) return ""; try { return s.includes("T") ? s.slice(0,16) : s; } catch { return s; } };
 
   function projectStatusDots(p){
-    // 3 statuspunkte: Anlage fertig, Fertigmeldung, Anmeldung
     const a = p.anlageFertig ? "ok" : "bad";
     const f = p.fertigmeldung ? "ok" : "warn";
     const n = p.anmeldung ? "ok" : "warn";
-    return `<div class="statusDots">
-      <div class="dot ${a}" title="Anlage fertig"></div>
-      <div class="dot ${f}" title="Fertigmeldung"></div>
-      <div class="dot ${n}" title="Anmeldung"></div>
-    </div>`;
+    return `<div class="statusDots"><div class="dot ${a}" title="Anlage fertig"></div><div class="dot ${f}" title="Fertigmeldung"></div><div class="dot ${n}" title="Anmeldung"></div></div>`;
   }
 
   function renderProjectList(){
@@ -335,14 +311,9 @@
               <div class="muted small">Termin: <span class="${p.appointment ? "ok":"warn"}">${escapeHtml(p.appointment || "—")}</span></div>
             </div>
             ${projectStatusDots(p)}
-          </div>
-        `;
+          </div>`;
         wrap.appendChild(div);
       });
-  }
-
-  function escapeHtml(s){
-    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
   function setDetailVisible(on){
@@ -350,9 +321,7 @@
     $("detailWrap").style.display = on ? "block" : "none";
   }
 
-  function getSelectedProject(){
-    return state.projects.find(p => p.id === state.selectedProjectId) || null;
-  }
+  function getSelectedProject(){ return state.projects.find(p => p.id === state.selectedProjectId) || null; }
 
   function fillProjectForm(p){
     $("p_name").value = p.name || "";
@@ -408,25 +377,17 @@
   }
 
   async function saveProject(){
-    if(state.role !== "boss"){
-      alert("Nur Chef darf Projekte speichern/anlegen.");
-      return;
-    }
+    if(state.role !== "boss"){ alert("Nur Chef darf Projekte speichern/anlegen."); return; }
     const proj = currentProjectPayload();
     if(!proj.name) { alert("Bitte Projektname eingeben."); return; }
     const data = await api("saveProject", { project: proj });
     await reloadProjects();
-    // reselect
     state.selectedProjectId = data.project.id;
     await selectProject(state.selectedProjectId);
   }
 
   async function newProject(){
-    if(state.role !== "boss"){
-      alert("Nur Chef darf Projekte anlegen.");
-      return;
-    }
-    // Minimal neues Projekt lokal auswählen, speichern macht der Chef dann
+    if(state.role !== "boss"){ alert("Nur Chef darf Projekte anlegen."); return; }
     const tmpId = "tmp-" + Math.random().toString(16).slice(2);
     const p = { id: tmpId, name:"Neues Projekt", location:"", appointment:"", team:"", materials:"", anlageFertig:false, fertigmeldung:false, anmeldung:false, notes:"" };
     state.projects.unshift(p);
@@ -453,33 +414,13 @@
     state.logs = data.logs || [];
     const wrap = $("logList");
     wrap.innerHTML = "";
-    if(!state.logs.length){
-      wrap.innerHTML = `<div class="muted">Noch keine Logs.</div>`;
-      return;
-    }
+    if(!state.logs.length){ wrap.innerHTML = `<div class="muted">Noch keine Logs.</div>`; return; }
     state.logs.forEach(l=>{
       const div = document.createElement("div");
       div.className = "proj";
-      div.innerHTML = `
-        <div class="name">${escapeHtml(l.who)} <span class="muted">(${escapeHtml(l.when)})</span></div>
-        <div class="muted">${escapeHtml(l.what)}</div>
-      `;
+      div.innerHTML = `<div class="name">${escapeHtml(l.who)} <span class="muted">(${escapeHtml(l.when)})</span></div><div class="muted">${escapeHtml(l.what)}</div>`;
       wrap.appendChild(div);
     });
-  }
-
-  async function uploadFile(){
-    const p = getSelectedProject();
-    if(!p) return;
-    const inp = $("fileInput");
-    if(!inp.files || !inp.files[0]) { alert("Bitte Datei auswählen."); return; }
-    const f = inp.files[0];
-
-    // WARNUNG: DataURL ist für kleine Dateien ok. Für große PDFs besser Google Drive Upload.
-    const dataUrl = await fileToDataUrl(f);
-    await api("uploadFileMeta", { file: { projectId: p.id, name: f.name, mime: f.type, size: f.size, dataUrl } });
-    inp.value = "";
-    await reloadFiles();
   }
 
   function fileToDataUrl(file){
@@ -491,6 +432,18 @@
     });
   }
 
+  async function uploadFile(){
+    const p = getSelectedProject();
+    if(!p) return;
+    const inp = $("fileInput");
+    if(!inp.files || !inp.files[0]) { alert("Bitte Datei auswählen."); return; }
+    const f = inp.files[0];
+    const dataUrl = await fileToDataUrl(f);
+    await api("uploadFileMeta", { file: { projectId: p.id, name: f.name, mime: f.type, size: f.size, dataUrl } });
+    inp.value = "";
+    await reloadFiles();
+  }
+
   async function reloadFiles(){
     const p = getSelectedProject();
     if(!p) return;
@@ -498,10 +451,7 @@
     state.files = data.files || [];
     const wrap = $("fileList");
     wrap.innerHTML = "";
-    if(!state.files.length){
-      wrap.innerHTML = `<div class="muted">Noch keine Dateien.</div>`;
-      return;
-    }
+    if(!state.files.length){ wrap.innerHTML = `<div class="muted">Noch keine Dateien.</div>`; return; }
     state.files.forEach(file=>{
       const div = document.createElement("div");
       div.className = "fileItem";
@@ -511,11 +461,46 @@
           <div class="name">${escapeHtml(file.name)}</div>
           <div class="muted small">${escapeHtml(file.mime)} · ${sizeKb} KB · ${escapeHtml(file.createdAt||"")}</div>
         </div>
-        <div><a href="${file.dataUrl}" download="${escapeHtml(file.name)}">Download</a></div>
-      `;
+        <div><a href="${file.dataUrl}" download="${escapeHtml(file.name)}">Download</a></div>`;
       wrap.appendChild(div);
     });
   }
+
+  // Signature
+  const canvas = $("sig");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let hasInk = false;
+
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#eaf0ff";
+  }
+
+  function pointerPos(e){
+    const rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
+  }
+
+  canvas.addEventListener("pointerdown", (e)=>{
+    drawing = true; canvas.setPointerCapture(e.pointerId);
+    const p = pointerPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+  });
+  canvas.addEventListener("pointermove", (e)=>{
+    if(!drawing) return;
+    const p = pointerPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasInk = true;
+  });
+  canvas.addEventListener("pointerup", ()=> drawing = false);
+  canvas.addEventListener("pointercancel", ()=> drawing = false);
+
+  function clearSig(){ const rect = canvas.getBoundingClientRect(); ctx.clearRect(0,0,rect.width,rect.height); hasInk = false; }
+  function sigToDataUrl(){ if(!hasInk) return ""; return canvas.toDataURL("image/png"); }
 
   async function submitReport(){
     const p = getSelectedProject();
@@ -533,18 +518,9 @@
       signatureDataUrl: sigToDataUrl()
     };
 
-    if(!rep.person || !rep.week || !rep.dateFrom || !rep.dateTo){
-      alert("Bitte KW, Person, Von/Bis Datum ausfüllen.");
-      return;
-    }
-    if(!rep.workDescription){
-      alert("Bitte Arbeitsbeschreibung ausfüllen.");
-      return;
-    }
-    if(!rep.signatureDataUrl){
-      alert("Bitte unterschreiben (oder Unterschrift ist leer).");
-      return;
-    }
+    if(!rep.person || !rep.week || !rep.dateFrom || !rep.dateTo){ alert("Bitte KW, Person, Von/Bis Datum ausfüllen."); return; }
+    if(!rep.workDescription){ alert("Bitte Arbeitsbeschreibung ausfüllen."); return; }
+    if(!rep.signatureDataUrl){ alert("Bitte unterschreiben."); return; }
 
     await api("submitReport", { report: rep });
     $("r_work").value = "";
@@ -553,18 +529,12 @@
   }
 
   async function loadReports(){
-    if(state.role !== "boss"){
-      alert("Nur Chef sieht alle Berichte.");
-      return;
-    }
+    if(state.role !== "boss"){ alert("Nur Chef sieht alle Berichte."); return; }
     const data = await api("listReports");
     state.reports = data.reports || [];
     const wrap = $("reportList");
     wrap.innerHTML = "";
-    if(!state.reports.length){
-      wrap.innerHTML = `<div class="muted">Noch keine Berichte.</div>`;
-      return;
-    }
+    if(!state.reports.length){ wrap.innerHTML = `<div class="muted">Noch keine Berichte.</div>`; return; }
     state.reports.forEach(r=>{
       const div = document.createElement("div");
       div.className = "proj";
@@ -579,8 +549,7 @@
         <div class="hr"></div>
         <div class="muted">${escapeHtml(r.workDescription)}</div>
         <div class="hr"></div>
-        <div class="small"><a href="${r.signatureDataUrl}" download="Unterschrift_${escapeHtml(r.person)}_KW${escapeHtml(r.week)}.png">Unterschrift downloaden</a></div>
-      `;
+        <div class="small"><a href="${r.signatureDataUrl}" download="Unterschrift_${escapeHtml(r.person)}_KW${escapeHtml(r.week)}.png">Unterschrift downloaden</a></div>`;
       wrap.appendChild(div);
     });
   }
@@ -595,81 +564,19 @@
     URL.revokeObjectURL(a.href);
   }
 
-  // === Signature pad (simple) ===
-  const canvas = $("sig");
-  const ctx = canvas.getContext("2d");
-  let drawing = false;
-  let hasInk = false;
-
-  function resizeCanvas(){
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.round(rect.width * devicePixelRatio);
-    canvas.height = Math.round(rect.height * devicePixelRatio);
-    ctx.scale(devicePixelRatio, devicePixelRatio);
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#eaf0ff";
-  }
-
-  window.addEventListener("resize", ()=> {
-    // simplistic: clear on resize
-    clearSig();
-    resizeCanvas();
-  });
-
-  function pointerPos(e){
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
-    return {x,y};
-  }
-
-  canvas.addEventListener("pointerdown", (e)=>{
-    drawing = true;
-    canvas.setPointerCapture(e.pointerId);
-    const p = pointerPos(e);
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-  });
-  canvas.addEventListener("pointermove", (e)=>{
-    if(!drawing) return;
-    const p = pointerPos(e);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    hasInk = true;
-  });
-  canvas.addEventListener("pointerup", ()=> drawing = false);
-  canvas.addEventListener("pointercancel", ()=> drawing = false);
-
-  function clearSig(){
-    const rect = canvas.getBoundingClientRect();
-    ctx.clearRect(0,0,rect.width,rect.height);
-    hasInk = false;
-  }
-  function sigToDataUrl(){
-    if(!hasInk) return "";
-    // export in device pixel size
-    return canvas.toDataURL("image/png");
-  }
-
-  // === Login ===
   function login(){
     const role = $("role").value;
     const person = $("person").value.trim();
     const pin = $("pin").value.trim();
 
     if(!person){ alert("Bitte Name eingeben."); return; }
-    if(role === "boss" && pin !== CHEF_PIN){
-      alert("Chef-PIN falsch.");
-      return;
-    }
+    if(role === "boss" && pin !== CHEF_PIN){ alert("Chef-PIN falsch."); return; }
 
     state.role = role;
     state.person = person;
     state.loggedIn = true;
 
     $("btnNewProject").style.display = (role === "boss") ? "inline-block" : "none";
-    $("btnSaveProject").style.display = (role === "boss") ? "inline-block" : "inline-block"; // speichern nur Chef enforced in saveProject()
     $("btnLoadReports").style.display = (role === "boss") ? "inline-block" : "none";
 
     $("log_who").value = person;
@@ -678,26 +585,20 @@
     alert(`Eingeloggt als ${role === "boss" ? "Chef" : "PV Gruppe"}: ${person}`);
   }
 
-  // === Boot ===
   async function boot(){
     try {
-      if(!API_URL.includes("http")) {
-        setConn(false, "API_URL fehlt");
-        return;
-      }
       await api("ping");
       setConn(true, "Verbunden");
       await reloadProjects();
     } catch (e){
       console.error(e);
       setConn(false, "Keine Verbindung");
-      alert("Backend nicht erreichbar. Prüfe API_URL / Token / Deploy.");
+      alert("Backend nicht erreichbar oder Token falsch. Prüfe Apps Script Deploy + API_TOKEN.");
     }
   }
 
-  // === Wire up ===
   $("btnLogin").onclick = login;
-  $("btnRefresh").onclick = async ()=> { await reloadProjects(); alert("Aktualisiert"); };
+  $("btnRefresh").onclick = async ()=> { await reloadProjects(); };
   $("btnNewProject").onclick = newProject;
   $("btnSaveProject").onclick = saveProject;
   $("btnDeleteLocal").onclick = ()=> { state.selectedProjectId=null; setDetailVisible(false); $("selTitle").textContent="Kein Projekt ausgewählt"; $("selSub").textContent=""; };
@@ -713,9 +614,8 @@
   $("btnLoadReports").onclick = loadReports;
   $("btnExportJSON").onclick = exportJSON;
 
-  // init signature
-  resizeCanvas();
-  clearSig();
+  window.addEventListener("resize", ()=> { resizeCanvas(); clearSig(); });
+  resizeCanvas(); clearSig();
 
   boot();
 </script>
